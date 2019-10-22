@@ -1,0 +1,21 @@
+#include<stdio.h>
+#include<string.h>
+#include<unistd.h>
+int main()
+ {
+ 
+    const char* change = "|/-\\";
+    char bar[102];
+    memset(bar,0,sizeof(bar));
+     int i = 0;
+     while(i<=100)
+     {
+         printf("[%-100s][%d%%][%c]\r",bar,i,change[i%4]);
+        fflush(stdout);
+         bar[i] = '#';
+         i++;
+        usleep(100000);                                                                                                          
+     }
+      printf("\n");
+     return 0;
+ }

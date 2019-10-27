@@ -1,0 +1,31 @@
+//这种通信方式 前提：两个进程看到同一个资源，这里是父子进程，这里的管道成为匿名管道，匿名管道只能进行具有亲缘关系间的进程的通信。
+#include<stdio.h>
+#include<unistd.h>
+int main()
+{
+	int fd[2] = {0};
+	pipe(fd);
+	pid_t i = fork();
+	
+	if(i ==0)
+	{
+		close(fd[0]);	//子进程负责写数据
+		char massage[] = "I am child!";
+		while(1)
+		{
+			wirte(fd[1],massage,strlen(massage));
+			printf("i am child ,I  alive");
+		}
+	}
+	else
+	{
+		close(fd[1]);	//父进程负责从管道中读数据
+		char buf[1024];
+		while(1)
+		{
+			ssize t = read(fd[0],buf,sizeof(buf)-1);
+			printf("I am father %s\n",buf);
+		}
+	}
+	return 0;
+}

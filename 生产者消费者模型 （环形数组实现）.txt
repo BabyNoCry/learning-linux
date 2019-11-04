@@ -1,0 +1,81 @@
+#include<iostream>
+#include<vector>
+#include<semaphore.h>
+#include<pthread>
+
+#define NUM 16
+
+class RingQueue
+{
+	private:
+		std::vector<int> q;
+		int cap;
+		sem_t data_sem;
+		sem_t space_sem;
+		int consume_step;
+		int product_step;
+		
+	public:
+		RingQuueue(int _cap = NUM)
+		:cap(_cap)
+		{
+			sem_init(&data_sem,0,0);
+			sem_init(&space_sem,0,cap);
+			consume_step = 0;
+			produxt_step = 0;
+		}
+		void PutData(const int &data)
+		{
+			sem_wait(&space_sem); // p²Ù×÷
+			q[product_step] = data;
+			product_stpe++;
+			product_step %= cap;
+			sem_post(&data_sem); 
+		}
+		void GetData(int &data)
+		{
+			sem_wait(&data_sem);
+			data = q[consume_step];
+			consume_step++;
+			consume_step(&space_sem);
+		}
+		
+		~RingQueue()
+		{
+			sem_destroy(&data_sem);
+			sem_destroy(&space_sem);
+		}
+ } ;
+ 
+ void* consume(void* arg)
+ {
+ 	RingQueue* rqp = (RingQueue*) arg;
+ 	int data ;
+ 	for(;;)
+ 	{
+ 		rqp->GetData(data);
+ 		std:: cout<< "Consume data done£º "<<data<endl;
+		sleep(1); 
+	 }
+ }
+ 
+ void* product(void* arg)
+ {
+ 	RingQueue* rqp = (RingQueue*)arg;
+ 	int data = srand()%1024;
+ 	rqp-PutData(data);
+	 std::cout<<"Product data done: "<<data<<std::endl;
+	  
+ 	
+  } 
+  
+  int main()
+  {
+  	RingQueue rq;
+  	pthread_t c, p;
+  	pthread_create(&c,NULL,consume,(void*) &rq);
+  	pthread_create(&p,NULL,product,(void*)&rq);
+	  
+	ptread_join(c,NULL);
+	pthread_join(p,NULL); 
+  }

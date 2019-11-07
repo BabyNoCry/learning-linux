@@ -1,0 +1,19 @@
+  1 #include"TcpServer.hpp"
+  2 void Usage(string proc)
+  3 {
+  4     cout<<"Usage: "<<proc<<"ip port"<<endl;
+  5 }
+  6 int main(int argc,char* argv[])
+  7 {
+  8     if(argc!=3)
+  9     {
+ 10         Usage(argv[0]);
+ 11         exit(1);
+ 12     }
+ 13     int port=atoi(argv[2]);
+ 14     string ip=argv[1];
+ 15     TcpServer *tsp=new TcpServer(ip,port);
+ 16     tsp->InitServer();
+ 17     tsp->Start();                                                                                                                                                  
+ 18     return 0;
+ 19 }

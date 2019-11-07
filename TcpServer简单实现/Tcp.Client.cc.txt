@@ -1,0 +1,20 @@
+1 #include"TcpClient.hpp"
+  2 void Usage(string proc)
+  3 {
+  4 
+  5     cout<<"Usage: "<<proc<<"Serverip Serverport"<<endl;
+  6 }
+  7 int main(int argc,char* argv[])
+  8 {
+  9     if(argc!=3)
+ 10     {
+ 11         Usage(argv[0]);
+ 12         exit(1);
+ 13     }
+ 14     int port=atoi(argv[2]);
+ 15     string ip=argv[1];
+ 16     TcpClient *cli=new TcpClient(ip,port);
+ 17     cli->InitClient();
+ 18     cli->Start();                                                                                                                                                  
+ 19     return 0;
+ 20 }

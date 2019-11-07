@@ -1,0 +1,105 @@
+#ifndef _TCP_SERVER_HPP_                                                                                                                                           
+  2 #define _TCP_SERVER_HPP_
+  3 #include<unistd.h>
+  4 #include<strings.h>
+  5 #include<iostream>
+  6 #include<string>
+  7 #include<netinet/in.h>
+  8 #include<arpa/inet.h>
+  9 #include<sys/socket.h>
+ 10 #include<sys/types.h>
+ 11 #include<stdlib.h>
+ 12 #include<string.h>
+ 13 using namespace std;
+ 14 //创建套接字  绑定端口号 ip  将服务器设为监听模式
+ 15 class TcpServer{
+ 16 
+ 17     private:
+ 18         int listen_sock;
+ 19         string ip;
+ 20         int port;
+ 21     public:
+ 22 
+ 23         TcpServer(string ip_,int port_):ip(ip_),port(port_),listen_sock(-1)
+ 24         { }
+ 25         void InitServer()
+ 26         {
+ 27              listen_sock=socket(AF_INET,SOCK_STREAM,0);
+ 28             if(listen_sock<0)
+ 29             {
+ 30                 cerr<<"socket error"<<endl;
+ 31                 exit(2);
+ 32             }
+ 33             struct sockaddr_in local;
+ 34             bzero(&local,sizeof(local));
+ 35             local.sin_family=AF_INET;
+ 36             local.sin_port=htons(port);
+ 37             local.sin_addr.s_addr=inet_addr(ip.c_str());
+ 38 
+ 39             if(bind(listen_sock,(struct sockaddr*)&local,sizeof(local))<0)
+ 40             {
+ 41 
+ 42                 cerr<<"bind error "<<endl;
+ 43                 exit(3);
+ 44             }
+ 45             if(listen(listen_sock,5)<0)
+ 46             {
+ 47                 cerr<<"listen error"<<endl;
+ 48                 exit(4);
+ 49             }
+ 50 
+ 51         }
+ 52 
+ 53         void Service(int sock)
+ 54         {
+ 55             while(1)
+ 56             {                    
+57 
+ 58             
+ 59             char buf[1024];
+ 60             ssize_t s=read(sock,buf,sizeof(buf)-1);
+ 61             if(s>0)
+ 62             {
+ 63                 buf[s]=0;
+ 64                 write(sock,buf,strlen(buf));
+ 65             }
+ 66             else if(s==0)
+ 67             {
+ 68                 cout<<"client quit!"<<endl;
+ 69                 break;
+ 70             }
+ 71             else
+ 72             {
+ 73                 cerr<<"read error"<<endl;
+ 74                 break;
+ 75             }
+ 76             }
+ 77             close(sock);
+ 78         }
+ 79         void Start()
+ 80         {
+ 81             struct sockaddr_in peer;
+ 82             socklen_t len=sizeof(peer);
+ 83             while(1)
+ 84             {
+ 85                 int sock=accept(listen_sock,(struct sockaddr*)&peer,&len);   
+ 86                 if(sock<0)
+ 87                 {
+ 88                     cerr<<"accept error"<<endl;//失败无妨，继续。
+ 89                     continue;
+ 90                 }
+ 91                 cout<<"Get a new client "<<sock<<endl;
+ 92                 Service(sock);//提供服务   
+ 93 
+ 94             }
+ 95         }
+ 96         ~TcpServer()
+ 97         {
+ 98             if(listen_sock>0)
+ 99             {
+100                 close(listen_sock);
+101             }
+102         }
+103 };
+104 
+105 #endif            

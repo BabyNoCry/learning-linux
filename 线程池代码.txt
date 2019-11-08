@@ -1,0 +1,170 @@
+#include<iostream>
+#include<pthread.h>
+#include<time.h>
+#include<unistd.h>
+#inlcude<queue>
+#inlcude<stdlib.h>
+
+int cal(int x ,int y,int op);
+typedef int (*HandlTask_t) (int x,int y,int op);
+
+class Task{
+	private:
+		int x;
+		int y;
+		int op;   //0+,1-,2*,3/
+		HandlTask_t handler;
+	public:
+		Task(int x_ = -1, int y_ = -1,int op_ = -1)
+		:x(x_),y(y_),op(op_)
+		{
+		 }
+		 
+		void Register(handlTask_t handler_)  //注册方法 
+		{
+		 handler = hander_;
+		
+		}
+		
+		void Run()
+		{
+			int ret = handler(x,y,op); 
+			const char* op_ w = "+-*/";
+			std:: cout<<"thread ["<<pthread_sel()<<"] handler resault: "<<x <<op_[op] << y <" = "<<ret<<std::endl;
+		}
+	    ~Task()
+		{
+		 }
+		 
+	 
+};
+class ThreadPool
+{
+	private:
+		int thread_nums;	//池内的线程数 
+		int idel_nums;		// 
+		std::queue<Task> task_queue;
+		pthread_mutex_t lock;
+		pthread_cond_t cond;
+		
+	public:
+		void LockQueue()
+		{
+			pthread_mutex_lock(&lock);
+		 } 
+		 void UnlockQueue()
+		{
+			pthread_mutex_lock(&lock);
+		 } 
+		bool QueueIsEmpty() 
+		{
+			return task_queue.size() == 0?true:false;
+		} 
+		void ThreadIdel()
+		{
+			idle_num++;
+			pthread_cond_wait(&cond,&lock);
+			idle_num--;
+		}
+		void WakeupThread()
+		{
+			pthread_cond_signal(&cond);
+		}
+		void PopTask(Task& t)
+		{
+			 t = task.queue.front();
+			task_queue.pop();
+		}
+	public:
+		ThreadPool(int num_ = 5):thread_nums(num_),idel_nums(0)
+		{
+			pthread_mutex_init(&lock,NULL);
+			pthread_cond_init(&cond,NULL);
+		}
+		
+		static void* ThreadRotinue(void* arg)  //static 的原因是该函数没有this指针，符合线程调用的函数类型 
+		{
+			pthread_detach(pthread_self());  //线程的分离 
+			TreadPool* tp = (ThreadPool*) arg; 
+			for(;;)
+			{
+				tp->LockQueue();
+				   //这里用while的原因是：
+				//1.万一 pthread_cond_wait(&cond,&lock) 调用失败    pthread_cond_wait函数返回时，相应的互斥锁将被当前线程锁定，即使是函数出错返回。
+				//pthread_cond_wait函数的返回并不意味着条件的值一定发生了变化，必须重新检查条件的值。  2.多个线程都在等，但是只有一个可以进入，因此要再次判断 
+				// 被广播唤醒  所有的线程去争夺同一个资源，但可能该线程没有抢到，那么继续向下执行就会出错 。因此不能用if 要用while 
+				while(tp->QueueIsEmpty())								
+				{
+					tp->ThreadIdle();
+				} 
+				Task t ;
+				tp->PopTask(t);
+				tp->UnlockQueue();
+				t.Run();      //拿到任务后，先释放锁再处理任务 
+			}
+		}
+		void InitThreadPool()
+		{
+			pthrad_t t;
+			for(auto i = 0;i<pthread_nums;i++)
+			{
+				pthread_create(&t,NULL,ThreadRotinue,this);
+			}
+			
+		}
+		void pushTask(const Task &t)
+		{
+			LockQueue();
+			task_queue.push(t);
+			WakeupThread();
+			UnlockQueue(); 
+		}
+		~ThreadPool()
+		{
+			pthread_mutex_destroy(&lock);
+			pthread_cond_destroy(&cond);
+		 } 
+		
+ } ;
+int cal(int x ,int y,int op)
+{
+	int ret = -1;
+	switch(op)
+	{
+		case 0:
+			ret = x+y;
+			break;	
+		case 1:
+			ret = x - y;
+			break;
+		case 2:
+			ret = x * y;
+			break;
+		case 3:
+			ret = x / y;
+			break;
+		default:
+			std:: cout<<"cal error!"<<std::endl;
+		 	break;
+	}
+ } 
+ int main()
+ {
+ 	ThreadPool tp;
+ 	tp.InitThreadPool();
+ 	
+ 	srand((unsigned long)time(NULL));
+ 	for(;;)
+ 	{
+ 		sleep(1);
+ 		int  x = rand() % 100 + 1;
+ 		int  y = rand() % 100 + 1;
+ 		int  op = rand() % 4;  
+ 		Task t(x,y,op);
+		t.Register(cal);
+		
+		tp.PushTask(t);
+	
+	 }
+ 	return 0;
+ }

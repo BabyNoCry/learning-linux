@@ -1,0 +1,209 @@
+#pragma once 
+#include<iostream>
+#include<vector>
+#include<sys/select.h>
+#inlcude<unistd.h>
+#include<sys/stat.h>
+#include<sys/types.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpr/inet.h>
+#include<fcntl.h>
+#define QUEUE_SIZE 5
+#define DEFAULT -1 
+using namespace std;
+
+class Sock{
+	private:
+		int sock;
+		static int backlog;
+	public:
+		Sock():sock(-1) 
+		{
+		}
+		void Socket()
+		{
+			sock = socket(AF_INET,SOCK_STREAM,0);
+			if(sock<0)
+			{
+				perror("socket");
+				exit(2);
+			}
+			int opt =1;
+			setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&opt);
+		}
+		
+		void Bind(int port)
+		{
+			struct sockaddr_in local;
+			local.sin_family = AF_INET;
+			local.sin_addr.s_addr = htonl(INADDR_ANY);
+			local.sin_port = htons(port);
+			
+			if(bind(sock,(struct sockaddr*)&local,sizeof(local))<0)
+			{
+				perror("Bind");
+				exit(3);
+			}
+		}
+		
+		void Listen()
+		{
+			if(listen(sock,backlog)<0)
+			{
+				perror("listen");
+				exit(4);
+			}
+		}
+		int GetSock()
+		{
+			return sock;
+		}
+		int Accept()
+		{
+			struct sockaddr_in peer;
+			socklen_t len = sizeof(peer);
+			
+			int fd = accept(sock,(struct sockaddr*)&peer,&len);
+			if(fd < 0)
+			{
+				cerr<<"accept error "<<endl;
+			 } 
+			 else
+			 {
+			 	cout<<"get a new client... link done"<<endl;
+			 }
+			 return fd;
+		}
+		 
+		~Sock()
+		{
+			if(sock>= 0)
+			{
+				close(sock);
+			}
+		 } 
+};
+int Sock::backlog = QUEUE_SIZE;
+
+class SelectServer{
+	private:
+		int port;
+		Sock sock;
+		static vector<int> rfdv;
+		static int cap;
+	public:
+		SelectServer(int _port = 8080):port(_port)
+		{
+		}
+		
+		void InitServer()
+		{
+			sock.Socket();
+			sock.Bind(port);
+			sock.Listen();
+		}
+		void handlerEvent(fd_set *ready,int listen_sock)
+		{
+			for(int i = 0;i<cap;i++)
+			{
+				if(rfdv[i] == DEFAULT)
+				{
+					continue;
+				 } 
+				
+				if(FD_ISSET(rfdv[i],ready))
+				{
+					if(listen_sock == rfdv[i]){ 
+						//链接事件就绪 ,放进数组 
+						int fd = sock.Accept();
+						if(fd >= 0)
+						{	
+							int j = 0;
+							for( j = 0;j<cap;j++)
+							{
+								if(rfdv[j] == DEFAULT)
+									rfdv[j] = fd;
+									break;
+							}
+							if(j == cap)
+							{
+								close(fd);
+								cerr<<"sock is full..."<<endl;
+							
+							}
+						}
+					}
+					else
+					{
+						//读事件就绪 ，读数据 
+						char buf[1024]; //bug!!!!,可能没有读完，数据大于1024 
+						ssize_t s = revc(rfdv[i],buf,sizeof(buf)-1);
+						if(s>0)
+						{
+							buf[s] = 0;
+							cout<< buf<<endl; 
+						 } 
+						 else if(s == 0)
+						 {
+						 	close(rfdv[i]);
+						 	rfdv[i] = DEFAULT;
+						 	cout<<"client quit..."<<e
+							 ndl;
+						 	
+						 }
+						 else
+						 {
+						 	close(rfdv[i]);
+						 	rfdv[i] = DEFAULT;
+						 	cout<<"recv error,close..."<<endl;
+						 }
+				}
+				
+			}
+		 } 
+		void Start()
+		{
+			int listen_sock = sock.GetSock(); 
+			rfdv[0] = listen_sock;
+			for(;;)
+			{
+				fd_set rfds; 		//读文件描述符集
+				FD_ZERO(&rfds); 	// 请空集合 
+				int max_fd = listen_sock;
+				for(int i = 0;i<cap;i++)
+				{
+					if(rfdv[i] == DEFAULT)
+						continue;
+					if(max_fd < rfdv[i])
+					{
+						max_fd = rfdv[i];
+					}
+					FD_SET(rfdv[i],&rfds);	
+				 } 
+				
+				struct timeval timeout = {5,0};
+				
+				switch(select(max_fd+1,&rfds,nullptr,nullptr,nullptr))switch(select())
+					case 0:
+						cout<<"time out..."<<endl;
+						break;
+					case -1:
+						cerr<<"select error..."<<endl;
+						break;
+					default://success
+						//TODO
+						cout<<"handler begin..."<<endl;
+						HandlerEvent(&rfds,listen_sock);
+						cout<<"handler end..."<<endl;
+						break;
+				 } 
+			}
+		}
+		
+		~SelectServer(){
+		}
+};
+
+vector<int> SelectServer::rfdv(sizeof(fd_set)*8,DEFAULT);
+int SelectServer:: cap = sizeof(sizeof(fd_set)*8);
